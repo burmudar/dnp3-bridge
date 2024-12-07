@@ -15,19 +15,28 @@
   };
 
   outputs = { self, nixpkgs, unstable-nixpkgs, crane, flake-utils, rust-overlay }:
-    flake-utils.lib.eachDefaultSystem (system:
+    flake-utils.lib.eachDefaultSystem (localSystem:
       let
-        overlays = [ (import rust-overlay) ];
+        crossSystem = {
+          system = "armv7l-linux";
+          gcc = {
+            fpu = "vfp";
+          };
+        };
+        overlays = [ rust-overlay.overlays.default ];
         pkgs = import nixpkgs {
-          inherit system overlays;
-        };
-        inherit (pkgs) lib;
-
-        upkgs = import unstable-nixpkgs {
-          inherit system;
+          inherit crossSystem overlays localSystem;
         };
 
-        craneLib = (crane.mkLib pkgs).overrideToolchain pkgs.rust-bin.stable."1.81.0".default;
+        lib = pkgs.pkgsBuildHost.lib;
+
+        rustTarget = "armv7-unknown-linux-gnueabihf";
+        # we want to override the buildHosts rust with the additional target
+        craneLib = (crane.mkLib pkgs).overrideToolchain (p: p.pkgsBuildHost.rust-bin.stable.latest.default.override { targets = [ rustTarget ]; });
+
+        # we call it with the base pkgs here and not just pkgsBuildHost, since the base pkgs has information regarding the target / host systems which
+        # is used in the crate
+        dnp3-bridge-arm = pkgs.callPackage ./crate-dnp3-bridge.nix { inherit craneLib; };
 
         # Use lib.sources.trace to see what the filter below filters
         src = lib.cleanSourceWith {
@@ -60,12 +69,14 @@
           inherit cargoArtifacts;
         });
 
+
       in
       {
 
         checks = {
           default = dnp3-bridge;
           inherit dnp3-bridge;
+          inherit dnp3-bridge-arm;
 
           dnp3-bridge-clippy = craneLib.cargoClippy (commonArgs // {
             inherit cargoArtifacts;
@@ -75,6 +86,7 @@
 
         packages = {
           default = dnp3-bridge;
+          inherit dnp3-bridge-arm;
         };
 
 
@@ -83,15 +95,11 @@
         devShells.default = craneLib.devShell (commonArgs // {
           packages = (commonArgs.nativeBuildInputs or [ ]) ++ (commonArgs.buildInputs or [ ]) ++ [
             pkgs.rust-analyzer
-            # we install this here instaed of cargo ... since installing binaries with cargo results in glibc issues
-            upkgs.bunyan-rs
           ];
 
-          # need to tell pkg_config where to find openssl hence PKG_CONFIG_PATH
-          shellHook = ''
-            export PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig";
-            export PATH="$HOME/.cargo/bin":$PATH
-          '';
         });
+        devShells.dnp3 = craneLib.devShell {
+          inputsFrom = [ dnp3-bridge-arm ];
+        };
       });
 }
