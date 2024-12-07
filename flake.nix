@@ -1,7 +1,6 @@
 {
   description = "flake for rust development";
 
-  # Nixpkgs / NixOS version to use.
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
     unstable-nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -9,7 +8,6 @@
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
-      # if you specify just nixpkgs.follows, then you'll get a confusing infinite branching error
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -19,6 +17,8 @@
       let
         crossSystem = {
           system = "armv7l-linux";
+          # we need to set this otherwise we errors like:
+          # cc1: error: '-mfloat-abi=hard': selected architecture lacks an FPU
           gcc = {
             fpu = "vfp";
           };
@@ -54,7 +54,6 @@
           ];
 
           buildInputs = [
-            pkgs.openssl
             pkgs.glibc.dev
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
             pkgs.libiconv
@@ -98,7 +97,8 @@
           ];
 
         });
-        devShells.dnp3 = craneLib.devShell {
+        # shell to inspect the env when we cross compile to arm
+        devShells.dnp3-arm = craneLib.devShell {
           inputsFrom = [ dnp3-bridge-arm ];
         };
       });
