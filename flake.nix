@@ -89,21 +89,27 @@
         dnp3-bridge = craneLib.buildPackage (commonArgs // {
           inherit cargoArtifacts;
         });
+        dnp3-bridge-clippy = craneLib.cargoClippy (commonArgs // {
+          inherit cargoArtifacts;
+          cargoClippyExtraArgs = "-- -D warnings";
+        });
 
+        dnp3-unit-tests = craneLib.mkCargoDerivation (commonArgs // {
+          inherit cargoArtifacts;
+
+          pnameSuffix = "-unit-tests";
+
+          buildPhaseCargoCommand = "cargo test --verbose";
+        });
 
       in
       {
 
         checks = {
-          default = dnp3-bridge;
           inherit dnp3-bridge;
-          inherit dnp3-bridge-armv7;
-          inherit dnp3-bridge-arm;
+          inherit dnp3-bridge-clippy;
+          inherit dnp3-unit-tests;
 
-          dnp3-bridge-clippy = craneLib.cargoClippy (commonArgs // {
-            inherit cargoArtifacts;
-            cargoClippyExtraArgs = "-- -D warnings";
-          });
         };
 
         packages = {
