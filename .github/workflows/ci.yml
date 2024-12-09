@@ -1,0 +1,74 @@
+name: Rust
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  CARGO_TERM_COLOR: always
+  LD_LIBRARY_PATH: ''
+
+jobs:
+  ci:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: DeterminateSystems/nix-installer-action@main
+    - uses: DeterminateSystems/magic-nix-cache-action@main
+    - uses: DeterminateSystems/flake-checker-action@main
+    - name: Cache Cargo
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Check
+      run: nix flake check
+    - name: Build
+      run: |
+        nix build '.#'
+    - name: Test
+      run: |
+        rm -rf ~/.cargo/bin/
+        nix develop --impure --command cargo test --verbose
+
+  cross-compile:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: DeterminateSystems/nix-installer-action@main
+    - uses: DeterminateSystems/magic-nix-cache-action@main
+    - uses: DeterminateSystems/flake-checker-action@main
+    - name: Cache Cargo
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build (aarch64)
+      run: |
+        nix build '.#dnp3-bridge-arm'
+        mkdir -p release
+        cp ./result/bin/dnp3-bridge release/dnp3-bridge-aarch64
+    - uses: actions/upload-artifact@4
+      with:
+        name: dnp3-bridge-aarch64
+        path: release/
+
+    - name: Build (armv7)
+      run: |
+        nix build '.#dnp3-bridge-armv7'
+        mkdir -p release
+        cp ./result/bin/dnp3-bridge release/dnp3-bridge-armv7
