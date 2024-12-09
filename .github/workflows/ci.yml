@@ -41,6 +41,7 @@ jobs:
         nix develop --impure --command cargo test --verbose
 
   cross-compile:
+    name: Cross Compile
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -62,7 +63,7 @@ jobs:
         nix build '.#dnp3-bridge-arm'
         mkdir -p release
         cp ./result/bin/dnp3-bridge release/dnp3-bridge-aarch64
-    - uses: actions/upload-artifact@4
+    - uses: actions/upload-artifact@v4
       with:
         name: dnp3-bridge-aarch64
         path: release/
@@ -72,3 +73,7 @@ jobs:
         nix build '.#dnp3-bridge-armv7'
         mkdir -p release
         cp ./result/bin/dnp3-bridge release/dnp3-bridge-armv7
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dnp3-bridge-aarch64
+        path: release/
