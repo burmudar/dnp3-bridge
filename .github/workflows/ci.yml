@@ -75,5 +75,5 @@ jobs:
         cp ./result/bin/dnp3-bridge release/dnp3-bridge-armv7
     - uses: actions/upload-artifact@v4
       with:
-        name: dnp3-bridge-aarch64
+        name: dnp3-bridge-armv7
         path: release/
